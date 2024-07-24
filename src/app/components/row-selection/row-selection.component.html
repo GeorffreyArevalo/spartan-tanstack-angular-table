@@ -1,0 +1,6 @@
+<hlm-checkbox
+  [checked]="
+    context.row.getIsSelected()
+  "
+  (changed)="context.row.toggleSelected(!!$event)"
+/>

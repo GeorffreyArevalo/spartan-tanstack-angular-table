@@ -1,0 +1,7 @@
+<hlm-checkbox
+  [checked]="
+    context.table.getIsAllRowsSelected()
+    || ( context.table.getIsSomeRowsSelected() && 'indeterminate')
+  "
+  (changed)="context.table.toggleAllRowsSelected()"
+/>

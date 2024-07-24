@@ -1,0 +1,241 @@
+
+<hlm-toaster richColors />
+<div class="flex items-center justify-between mt-4 gap-3">
+
+  <div class="w-full lg:w-1/2 flex items-center gap-2">
+    <input
+      hlmInput
+      placeholder="Filter rows..."
+      debouncedInput
+      (changeEvent)="onDeboucedInputChange($event)"
+      class="w-full"
+    />
+
+    @if ( isVisibleButtonShowSelected() ) {
+
+      <button hlmBtn variant="default" (click)="showSelection()" >Show Selection</button>
+
+    }
+
+  </div>
+
+  <button hlmBtn variant="outline" align="end" [brnMenuTriggerFor]="menu">
+    Columns
+    <hlm-icon name="lucideChevronDown" class="ml-2" size="sm" />
+  </button>
+  <ng-template #menu>
+    <hlm-menu class="w-auto">
+      @for (column of tanstackTable.getAllColumns(); track column.id) {
+
+        @if( column.id !== 'select' && column.id !== 'actions'  ){
+          <label hlmLabel class="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent rounded-sm">
+            <hlm-checkbox
+              [checked]="column.getIsVisible()"
+              (changed)="column.toggleVisibility($event)"
+              [disabled]="
+                (showActions() && showSelect() && tanstackTable.getVisibleFlatColumns().length == 3 && column.getIsVisible())
+                || (!showActions() && !showSelect() && tanstackTable.getVisibleFlatColumns().length == 1 && column.getIsVisible())
+                || (showActions() && !showSelect() && tanstackTable.getVisibleFlatColumns().length == 2 && column.getIsVisible())
+                || (!showActions() && showSelect() && tanstackTable.getVisibleFlatColumns().length == 2 && column.getIsVisible())
+              "
+            />
+            <span>{{ headerTableComboVisibility()[column.id].title }}</span>
+
+          </label>
+        }
+
+      }
+    </hlm-menu>
+  </ng-template>
+
+</div>
+
+
+<hlm-table class="border-border mt-4 block h-auto overflow-auto rounded-md border" hlmTable>
+
+    @for (headerGroup of tanstackTable.getHeaderGroups(); track headerGroup.id) {
+      <hlm-trow>
+        @for (headerItem of headerGroup.headers; track headerItem.id) {
+          @if (!headerItem.isPlaceholder) {
+            <hlm-th
+              [ngClass]="{
+                'w-auto !px-4': headerItem.column.id === 'select' || headerItem.column.id === 'actions',
+                'w-48 md:flex-1': headerItem.column.id != 'select' && headerItem.column.id !== 'actions',
+              }"
+              class="text-base font-semibold"
+            >
+
+              @if (headerItem.column.id === 'select') {
+                <hlm-checkbox
+                  [checked]="
+                  tanstackTable.getIsAllRowsSelected()
+                    || ( tanstackTable.getIsSomeRowsSelected() && 'indeterminate')
+                  "
+                  (changed)="tanstackTable.toggleAllRowsSelected()"
+                />
+              } @else if(headerItem.column.id === 'actions') {
+                <span class="w-10"></span>
+              } @else {
+                <ng-container
+                  *flexRender="
+                    headerItem.column.columnDef.header;
+                    props: headerItem.getContext();
+                    let header
+                  "
+                >
+                  <button hlmBtn variant="ghost"
+                    (click)="onSortingColumn(headerItem.column)"
+                  >
+                    <div [innerHTML]="header"></div>
+                    <hlm-icon size="sm" name="lucideChevronsUpDown" class="ml-1" />
+                  </button>
+                </ng-container>
+              }
+
+            </hlm-th>
+          }
+        }
+      </hlm-trow>
+    }
+
+
+
+
+    @for (row of tanstackTable.getRowModel().rows; track row.id) {
+      <hlm-trow>
+        @for (cell of row.getVisibleCells(); track cell.id) {
+          <hlm-td truncate
+            [ngClass]="{
+              'w-auto !px-4': cell.column.id == 'select' || cell.column.id === 'actions',
+              'w-48 md:flex-1': cell.column.id != 'select' && cell.column.id !== 'actions',
+            }"
+          >
+
+            @if (cell.column.id === 'select') {
+              <hlm-checkbox
+                [checked]="
+                  row.getIsSelected()
+                "
+                (changed)="row.toggleSelected(!!$event)"
+              />
+            } @else if(cell.column.id === 'actions') {
+
+              <button hlmBtn variant="ghost" class="h-6 w-6 p-0.5" align="end" [brnMenuTriggerFor]="menu">
+                <hlm-icon class="w-4 h-4" name="lucideEllipsis" />
+              </button>
+
+              <ng-template #menu>
+                <hlm-menu>
+                  <hlm-menu-label>Actions</hlm-menu-label>
+                  <hlm-menu-separator />
+                  <hlm-menu-group>
+                    <button hlmMenuItem (click)="copyIdToClipboard(row.original[copyOnClipboard()])">Copy payment ID</button>
+                  </hlm-menu-group>
+                </hlm-menu>
+              </ng-template>
+
+
+            } @else {
+              <ng-container
+                *flexRender="
+                  cell.column.columnDef.cell;
+                  props: cell.getContext();
+                  let cell
+                "
+              >
+                <div [innerHTML]="cell"></div>
+              </ng-container>
+            }
+
+          </hlm-td>
+        }
+      </hlm-trow>
+    }
+
+
+</hlm-table>
+
+<div class="flex items-center justify-between">
+
+  <span class="text-sm text-muted-foreground">
+    Selected {{
+      tanstackTable.getFilteredSelectedRowModel().rows.length
+    }} of
+    {{
+      tanstackTable.getFilteredRowModel().rows.length
+    }}
+  </span>
+
+  <div>
+    <span class="text-sm text-muted-foreground">
+      Show {{ tanstackTable.getRowModel().rows.length }} of {{ tanstackTable.getRowCount() }}
+    </span>
+  </div>
+
+
+  <div class="flex items-center gap-2 mt-2">
+
+    <span class="text-sm text-muted-foreground">
+      {{ tanstackTable.getState().pagination.pageIndex + 1 }}
+      of {{ tanstackTable.getPageCount() }}  Pages
+    </span>
+
+
+    <brn-popover [state]="stateCombobox()"
+      (stateChanged)="changeStateCombobox($event)"
+      sideOffset="5" closeDelay="100">
+      <button class="w-20 justify-between" id="edit-profile" variant="outline" brnPopoverTrigger hlmBtn>
+        {{ tanstackTable.getState().pagination.pageSize }}
+        <hlm-icon size="sm" name="lucideChevronDown" />
+      </button>
+      <brn-cmd *brnPopoverContent="let ctx" hlmPopoverContent hlm class="p-0 w-20">
+
+        <brn-cmd-list hlm>
+          <brn-cmd-group hlm>
+
+            @for (size of pageSizes(); track size) {
+              <button
+
+                brnCmdItem
+                [value]="size.toString()"
+                (selected)="onPageSizeChange(size)"
+                [ariaSelected]="size === tanstackTable.getState().pagination.pageSize"
+                hlm
+              >
+                <hlm-icon
+                  [ngClass]="{'opacity-0': size !== tanstackTable.getState().pagination.pageSize}"
+                  name="lucideCheck"
+                  hlmCmdIcon
+                />
+                {{ size }}
+              </button>
+
+            }
+
+
+          </brn-cmd-group>
+        </brn-cmd-list>
+      </brn-cmd>
+    </brn-popover>
+
+    <button
+      hlmBtn variant="default" size="sm"
+      [disabled]="!tanstackTable.getCanPreviousPage()"
+      (click)="tanstackTable.previousPage()"
+    >
+      Previous
+    </button>
+    <button
+      hlmBtn variant="default" size="sm"
+      [disabled]="!tanstackTable.getCanNextPage()"
+      (click)="tanstackTable.nextPage()"
+    >
+      Next
+    </button>
+
+  </div>
+
+</div>
+
+
+
